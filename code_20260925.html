@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial‑scale=1.0,maximum‑scale=1,user‑scalable=no">
+<title>手机贪吃蛇</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui}
+html,body{background:#111;color:#fff;min-height:100vh;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px}
+#gameCanvas{border:2px solid #4cd137;background:#0a0a0a;max-width:100%;touch-action:none}
+.info{text-align:center;margin-bottom:10px}
+#score{font-size:22px;margin:6px 0}
+#tip{color:#aaa;font-size:14px;margin-bottom:8px}
+#gameOver{font-size:28px;color:#ff4757;margin:8px 0;display:none}
+#restartBtn{padding:10px 24px;font-size:17px;background:#4cd137;border:none;color:#000;border-radius:8px;cursor:pointer;margin-bottom:16px}
+#restartBtn:active{background:#2ecc71}
+
+/* 虚拟方向按键 */
+.dpad{margin-top:20px;display:grid;grid-template-columns:64px 64px 64px;grid-template-rows:64px 64px 64px;gap:6px}
+.dpad button{font-size:28px;border:none;border-radius:10px;background:#222;color:#4cd137}
+.dpad button:active{background:#383838}
+.btn-up{grid-column:2;grid-row:1}
+.btn-left{grid-column:1;grid-row:2}
+.btn-right{grid-column:3;grid-row:2}
+.btn-down{grid-column:2;grid-row:3}
+</style>
+</head>
+<body>
+<div class="info">
+  <div id="score">分数：0</div>
+  <div id="tip">手机：点击方向按钮｜电脑：方向键</div>
+  <div id="gameOver">游戏结束!</div>
+  <button id="restartBtn">重新开始</button>
+</div>
+<canvas id="gameCanvas" width="360" height="360"></canvas>
+
+<div class="dpad">
+  <button class="btn-up" id="btnUp">↑</button>
+  <button class="btn-left" id="btnLeft">←</button>
+  <button class="btn-right" id="btnRight">→</button>
+  <button class="btn-down" id="btnDown">↓</button>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const gameOverEl = document.getElementById('gameOver');
+const restartBtn = document.getElementById('restartBtn');
+
+const grid = 18;
+let snake = [];
+let food = {};
+let dir = {x:1,y:0};
+let nextDir = {x:1,y:0};
+let score = 0;
+let gameLoop = null;
+
+function initGame(){
+  snake = [
+    {x:5,y:10},
+    {x:4,y:10},
+    {x:3,y:10}
+  ];
+  dir = {x:1,y:0};
+  nextDir = {x:1,y:0};
+  score = 0;
+  scoreEl.innerText = `分数：${score}`;
+  gameOverEl.style.display = 'none';
+  spawnFood();
+  if(gameLoop) clearInterval(gameLoop);
+  gameLoop = setInterval(update,130);
+}
+
+function spawnFood(){
+  food.x = Math.floor(Math.random()*(canvas.width/grid));
+  food.y = Math.floor(Math.random()*(canvas.height/grid));
+  for(let seg of snake){
+    if(seg.x === food.x && seg.y === food.y){
+      spawnFood();
+      return;
+    }
+  }
+}
+
+function update(){
+  dir = {...nextDir};
+  const head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
+
+  if(head.x <0 || head.x >= canvas.width/grid || head.y <0 || head.y >= canvas.height/grid){
+    return gameEnd();
+  }
+  for(let seg of snake){
+    if(seg.x === head.x && seg.y === head.y){
+      return gameEnd();
+    }
+  }
+
+  snake.unshift(head);
+  if(head.x === food.x && head.y === food.y){
+    score +=10;
+    scoreEl.innerText = `分数：${score}`;
+    spawnFood();
+  }else{
+    snake.pop();
+  }
+  render();
+}
+
+function render(){
+  ctx.fillStyle="#0a0a0a";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle="#4cd137";
+  snake.forEach(seg=>{
+    ctx.fillRect(seg.x*grid+1, seg.y*grid+1, grid-2, grid-2);
+  })
+  ctx.fillStyle="#ff4757";
+  ctx.fillRect(food.x*grid+1, food.y*grid+1, grid-2, grid-2);
+}
+
+function gameEnd(){
+  clearInterval(gameLoop);
+  gameOverEl.style.display = 'block';
+}
+
+// 键盘
+document.addEventListener('keydown',e=>{
+  if(e.key === 'ArrowUp' && dir.y !==1) nextDir = {x:0,y:-1};
+  if(e.key === 'ArrowDown' && dir.y !==-1) nextDir = {x:0,y:1};
+  if(e.key === 'ArrowLeft' && dir.x !==1) nextDir = {x:-1,y:0};
+  if(e.key === 'ArrowRight' && dir.x !==-1) nextDir = {x:1,y:0};
+})
+
+// 虚拟按钮
+document.getElementById('btnUp').addEventListener('touchstart',(e)=>{e.preventDefault();if(dir.y!==1) nextDir={x:0,y:-1};})
+document.getElementById('btnDown').addEventListener('touchstart',(e)=>{e.preventDefault();if(dir.y!==-1) nextDir={x:0,y:1};})
+document.getElementById('btnLeft').addEventListener('touchstart',(e)=>{e.preventDefault();if(dir.x!==1) nextDir={x:-1,y:0};})
+document.getElementById('btnRight').addEventListener('touchstart',(e)=>{e.preventDefault();if(dir.x!==-1) nextDir={x:1,y:0};})
+
+// 鼠标点击虚拟按键（电脑也能用按钮）
+document.getElementById('btnUp').addEventListener('mousedown',()=>{if(dir.y!==1) nextDir={x:0,y:-1};})
+document.getElementById('btnDown').addEventListener('mousedown',()=>{if(dir.y!==-1) nextDir={x:0,y:1};})
+document.getElementById('btnLeft').addEventListener('mousedown',()=>{if(dir.x!==1) nextDir={x:-1,y:0};})
+document.getElementById('btnRight').addEventListener('mousedown',()=>{if(dir.x!==-1) nextDir={x:1,y:0};})
+
+restartBtn.addEventListener('click',initGame);
+initGame();
+</script>
+</body>
+</html>
